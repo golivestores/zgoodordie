@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>ZGOODORDIE</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,300;1,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -39,13 +39,13 @@
     #ui {
       position: fixed;
       inset: 0;
-      z-index: 20;
+      z-index: 31;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
       padding:
-        max(env(safe-area-inset-top,  40px), 40px) 28px
-        max(env(safe-area-inset-bottom, 32px), 32px);
+        max(env(safe-area-inset-top,  44px), 44px) 28px
+        max(env(safe-area-inset-bottom, 40px), 40px);
       pointer-events: none;
       transition: opacity 0.5s ease;
     }
@@ -60,54 +60,19 @@
     }
 
     .brand {
-      font-family: 'Cinzel', serif;
+      font-family: 'JetBrains Mono', monospace;
       font-weight: 400;
       font-size: 9px;
-      letter-spacing: 0.5em;
-      color: rgba(245,240,228,0.88);
-      text-shadow: 0 0 20px rgba(0,0,0,0.9);
+      letter-spacing: 0.42em;
+      color: rgba(0,255,180,0.70);
+      text-shadow: 0 0 14px rgba(0,255,180,0.30);
     }
 
     .phase-tag {
-      font-family: 'Cormorant Garamond', serif;
-      font-style: italic;
-      font-size: 10px;
-      letter-spacing: 0.2em;
-      color: rgba(165,158,145,0.6);
-    }
-
-    .ui-bottom {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .enter-label {
-      font-family: 'Cinzel', serif;
-      font-size: 8px;
-      letter-spacing: 0.62em;
-      color: rgba(165,158,145,0.75);
-      opacity: 0;
-      animation: rise 1s 2s ease forwards;
-    }
-
-    .enter-bar {
-      width: 1px;
-      height: 48px;
-      background: linear-gradient(to bottom, rgba(245,240,228,0.65), transparent);
-      opacity: 0;
-      animation: rise 1s 2.4s ease forwards, blink 2.6s 3.4s ease-in-out infinite;
-    }
-
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 0.6; transform: translateY(0); }
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 0.22; }
-      50%       { opacity: 0.72; }
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.15em;
+      color: rgba(0,255,180,0.35);
     }
 
     /* ── TAP ZONE ───────────────────────────────────── */
@@ -120,6 +85,169 @@
 
     body.phase2 #tap,
     body.phase3 #tap { pointer-events: none; }
+
+    /* ── CRT SCANLINES ──────────────────────────────── */
+    .crt-lines {
+      position: fixed;
+      inset: 0;
+      z-index: 18;
+      background: repeating-linear-gradient(
+        to bottom,
+        transparent 0px,
+        transparent 3px,
+        rgba(0,0,0,0.055) 3px,
+        rgba(0,0,0,0.055) 4px
+      );
+      pointer-events: none;
+    }
+
+    /* ── HUD CORNERS ────────────────────────────────── */
+    .hud-corner {
+      position: fixed;
+      z-index: 32;
+      width: 22px;
+      height: 22px;
+      pointer-events: none;
+      opacity: 0;
+      animation: hud-fade 0.6s 0.4s ease forwards;
+    }
+    .hud-tl { top: 18px; left: 18px;
+      border-top: 1px solid rgba(0,255,180,0.50);
+      border-left: 1px solid rgba(0,255,180,0.50); }
+    .hud-tr { top: 18px; right: 18px;
+      border-top: 1px solid rgba(0,255,180,0.50);
+      border-right: 1px solid rgba(0,255,180,0.50); }
+    .hud-bl { bottom: 18px; left: 18px;
+      border-bottom: 1px solid rgba(0,255,180,0.50);
+      border-left: 1px solid rgba(0,255,180,0.50); }
+    .hud-br { bottom: 18px; right: 18px;
+      border-bottom: 1px solid rgba(0,255,180,0.50);
+      border-right: 1px solid rgba(0,255,180,0.50); }
+
+    @keyframes hud-fade {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    /* ── TERMINAL BLOCK ─────────────────────────────── */
+    .ui-center {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 0 32px;
+    }
+
+    .terminal-block {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 400;
+      font-size: clamp(11px, 2.9vw, 14px);
+      line-height: 1.9;
+      color: rgba(210, 255, 240, 0.90);
+      text-shadow: 0 0 18px rgba(0,255,180,0.28);
+      white-space: pre;
+      min-height: 4.5em;
+    }
+
+    .terminal-cursor {
+      display: inline-block;
+      color: rgba(0,255,180,0.95);
+      text-shadow: 0 0 10px rgba(0,255,180,0.7);
+      animation: cur-blink 0.9s step-end infinite;
+    }
+
+    @keyframes cur-blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    .fate-index {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(9px, 2.1vw, 11px);
+      letter-spacing: 0.06em;
+      color: rgba(0,255,180,0.45);
+      margin-top: 12px;
+    }
+
+    /* ── HUD BUTTON ─────────────────────────────────── */
+    .ui-bottom {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .hud-btn-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+      pointer-events: auto;
+      cursor: pointer;
+      opacity: 0;
+      animation: hud-fade 0.7s 0.8s ease forwards;
+    }
+
+    .hud-btn {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(10px, 2.6vw, 13px);
+      letter-spacing: 0.10em;
+      color: rgba(210, 255, 240, 0.85);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 10px 0;
+      position: relative;
+      transition: color 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .hud-btn .br-l,
+    .hud-btn .br-r {
+      display: inline-block;
+      color: rgba(0,255,180,0.75);
+      transition: transform 0.28s ease;
+    }
+
+    .hud-btn-wrap:hover .br-l { transform: translateX(-6px); }
+    .hud-btn-wrap:hover .br-r { transform: translateX(6px); }
+    .hud-btn-wrap:hover .hud-btn { color: rgba(0,255,210,1); }
+
+    .hud-btn::after {
+      content: '';
+      position: absolute;
+      bottom: 6px;
+      left: 0; right: 100%;
+      height: 1px;
+      background: rgba(0,255,180,0.55);
+    }
+    .hud-btn-wrap:hover .hud-btn::after {
+      right: 0;
+      transition: right 0.32s ease;
+    }
+
+    /* ── PROGRESS BAR ───────────────────────────────── */
+    .progress-line {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(8px, 2vw, 10px);
+      letter-spacing: 0.05em;
+      color: rgba(0,255,180,0.38);
+    }
+
+    /* ── GLITCH ─────────────────────────────────────── */
+    @keyframes glitch-shift {
+      0%, 100% { transform: translate(0); filter: none; }
+      20%       { transform: translate(-3px, 1px); filter: hue-rotate(80deg) saturate(2); }
+      40%       { transform: translate(3px, -1px); filter: hue-rotate(-80deg) saturate(2); }
+      60%       { transform: translate(-1px, 2px); filter: hue-rotate(40deg); }
+      80%       { transform: translate(0); filter: none; }
+    }
+
+    body.glitch-active #ui {
+      animation: glitch-shift 0.12s ease;
+    }
+    body.glitch-active .crt-lines {
+      opacity: 2;
+    }
 
   </style>
 </head>
@@ -136,15 +264,27 @@
     <source src="new%20video-2.mp4" type="video/mp4">
   </video>
 
+  <!-- CRT scanlines -->
+  <div class="crt-lines"></div>
+
+  <!-- HUD corner markers -->
+  <div class="hud-corner hud-tl"></div>
+  <div class="hud-corner hud-tr"></div>
+  <div class="hud-corner hud-bl"></div>
+  <div class="hud-corner hud-br"></div>
+
   <!-- Phase 1 overlay -->
   <div id="ui">
     <div class="ui-top">
-      <span class="brand">Z G O O D O R D I E</span>
-      <span class="phase-tag">Phase 1.0</span>
+      <span class="brand">ZGOODORDIE</span>
+      <span class="phase-tag">v.0.3</span>
     </div>
+
     <div class="ui-bottom">
-      <span class="enter-label">TOUCH TO ENTER</span>
-      <div class="enter-bar"></div>
+      <div class="hud-btn-wrap" id="enter-btn">
+        <button class="hud-btn"><span class="br-l">[ </span>► PRESS TO ROLL THE DICE<span class="br-r"> ]</span></button>
+        <div class="progress-line" id="progress-bar">LOADING FATE... ▓▓▓▓▓░░░░░ 53%</div>
+      </div>
     </div>
   </div>
 
@@ -448,6 +588,40 @@
     v1.addEventListener('loadedmetadata', startV1, { once: true });
     v1.addEventListener('canplay', startV1, { once: true });
   }
+
+  /* ══════════════════════════════════════════════
+     CYBER FORTUNE MACHINE UI
+  ══════════════════════════════════════════════ */
+  const progEl    = document.getElementById('progress-bar');
+  const enterWrap = document.getElementById('enter-btn');
+
+  /* Progress bar oscillator — drifts but never reaches 100% */
+  const FILLED = '▓', EMPTY = '░', TOTAL = 10;
+  let pct = 53, pDir = 1;
+  setInterval(() => {
+    pct += pDir * (Math.random() * 1.8 + 0.4);
+    if (pct >= 88) pDir = -1;
+    if (pct <= 46) pDir =  1;
+    const n = Math.round(pct / 100 * TOTAL);
+    const bar = FILLED.repeat(n) + EMPTY.repeat(TOTAL - n);
+    progEl.textContent = `LOADING FATE... ${bar} ${Math.round(pct)}%`;
+  }, 650);
+
+  /* Random glitch bursts */
+  function scheduleGlitch() {
+    setTimeout(() => {
+      document.body.classList.add('glitch-active');
+      setTimeout(() => {
+        document.body.classList.remove('glitch-active');
+        scheduleGlitch();
+      }, 120);
+    }, 5000 + Math.random() * 9000);
+  }
+  scheduleGlitch();
+
+  /* Wire enter button (sits above #tap via z-index 31 on #ui + pointer-events:auto) */
+  enterWrap.addEventListener('click', (e) => { e.stopPropagation(); enter(); });
+  enterWrap.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); enter(); }, { passive: false });
 
   </script>
 </body>

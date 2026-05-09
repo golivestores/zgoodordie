@@ -971,6 +971,9 @@
     if (!cardProto) { log('GLB not ready yet!'); return; }
     cardRainActive = true;
 
+    // Lift canvas above bg-layer so card rain renders on top of background
+    canvas.style.zIndex = '2';
+
     // Hide icon bar
     gsap.to('#ui3', { opacity: 0, y: 16, duration: 0.3 });
     document.getElementById('ui3').style.pointerEvents = 'none';
@@ -1079,6 +1082,8 @@
     setTimeout(() => {
       overlay.classList.remove('active');
       gsap.to(overlay, { opacity: 0, duration: 0.4, onComplete: () => {
+        // Restore canvas below bg-layer
+        canvas.style.zIndex = '0';
         cardRainActive = false;
         gsap.to('#ui3', { opacity: 1, y: 0, duration: 0.5 });
         document.getElementById('ui3').style.pointerEvents = 'auto';
@@ -1108,12 +1113,8 @@
     const handler = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      if (idx === 0) {
-        // Card rain has its own visual — don't overlay a background image
-        triggerCardRain();
-      } else {
-        switchBg(idx);
-      }
+      switchBg(idx);
+      if (idx === 0) triggerCardRain();
     };
     btn.addEventListener('click',    handler);
     btn.addEventListener('touchend', handler, { passive: false });

@@ -507,9 +507,6 @@
   <!-- WebGL canvas -->
   <canvas id="c"></canvas>
 
-  <!-- Background image layer (above canvas, below UI) -->
-  <div id="bg-layer"></div>
-
   <!-- Video sources (hidden, streamed as GPU textures) -->
   <video id="v1" autoplay muted loop playsinline preload="auto">
     <source src="new%20video-1.mp4" type="video/mp4">
@@ -649,6 +646,17 @@
   [tex1, tex2].forEach(t => {
     t.minFilter = THREE.LinearFilter;
     t.magFilter = THREE.LinearFilter;
+  });
+
+  /* ── BG IMAGE TEXTURES ─────────────────────────── */
+  const texLoader = new THREE.TextureLoader();
+  const bgTextures = ['bg-1.webp','bg-2.webp','bg-3.webp','bg-4.webp'].map(src => {
+    const t = texLoader.load(src, tex => {
+      tex.minFilter = THREE.LinearFilter;
+      tex.magFilter = THREE.LinearFilter;
+      tex.userData.aspect = tex.image.width / tex.image.height;
+    });
+    return t;
   });
 
   /* ── SHADER ────────────────────────────────────── */
@@ -971,9 +979,6 @@
     if (!cardProto) { log('GLB not ready yet!'); return; }
     cardRainActive = true;
 
-    // Lift canvas above bg-layer so card rain renders on top of background
-    canvas.style.zIndex = '2';
-
     // Hide icon bar
     gsap.to('#ui3', { opacity: 0, y: 16, duration: 0.3 });
     document.getElementById('ui3').style.pointerEvents = 'none';
@@ -1082,8 +1087,6 @@
     setTimeout(() => {
       overlay.classList.remove('active');
       gsap.to(overlay, { opacity: 0, duration: 0.4, onComplete: () => {
-        // Restore canvas below bg-layer
-        canvas.style.zIndex = '0';
         cardRainActive = false;
         gsap.to('#ui3', { opacity: 1, y: 0, duration: 0.5 });
         document.getElementById('ui3').style.pointerEvents = 'auto';
@@ -1091,19 +1094,20 @@
     }, 500);
   });
 
-  /* ── BACKGROUND SWITCHER ─────────────────────── */
-  const bgLayer   = document.getElementById('bg-layer');
-  const BG_IMGS   = ['bg-1.webp', 'bg-2.webp', 'bg-3.webp', 'bg-4.webp'];
-  let   activeBg  = -1;
+  /* ── BACKGROUND SWITCHER (texture swap in shader) ── */
+  // In phase3 uBlend=1.0, so only uTex2 is visible — swap that texture
+  let activeBg = -1;
 
   function switchBg(idx) {
     if (activeBg === idx) {
-      // Same button: toggle off
-      bgLayer.classList.remove('visible');
+      // Toggle off — restore video2
+      uniforms.uTex2.value         = tex2;
+      uniforms.uVideoAspect2.value = v2.videoWidth ? v2.videoWidth / v2.videoHeight : 720 / 1280;
       activeBg = -1;
     } else {
-      bgLayer.style.backgroundImage = `url('${BG_IMGS[idx]}')`;
-      bgLayer.classList.add('visible');
+      const t = bgTextures[idx];
+      uniforms.uTex2.value         = t;
+      uniforms.uVideoAspect2.value = t.userData.aspect || (500 / 1080);
       activeBg = idx;
     }
   }

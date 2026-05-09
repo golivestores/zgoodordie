@@ -310,6 +310,9 @@
   const mesh = new THREE.Mesh(geo, mat);
   scene.add(mesh);
 
+  /* ── EARLY PRELOAD V2 ─────────────────────────── */
+  v2.load();
+
   /* ── VIDEO ASPECT RATIOS ───────────────────────── */
   v1.addEventListener('loadedmetadata', () => {
     if (v1.videoWidth) uniforms.uVideoAspect1.value = v1.videoWidth / v1.videoHeight;
@@ -344,54 +347,53 @@
 
     const tl = gsap.timeline({ onComplete: onEnterComplete });
 
-    /* 1. Camera RUSHES FORWARD — the push-in */
+    /* A: Drift to over-shoulder position — step aside, lean in */
     tl.to(camera.position, {
-      z: 0.06,
-      duration: 1.35,
-      ease: 'power3.in',
+      x: -0.42, y: 0.10, z: 3.6,
+      duration: 0.90, ease: 'power2.in',
+    }, 0);
+    tl.to(camera.rotation, {
+      y: -0.10,
+      duration: 0.90, ease: 'power2.in',
     }, 0);
 
-    /* 2. Chromatic aberration climbs — "warping through" */
-    tl.to(uniforms.uChroma, {
-      value: 6,
-      duration: 0.55,
-      ease: 'power2.in',
-    }, 0.72);
-
-    /* 3. Vignette clamps hard at the moment of penetration */
-    tl.to(uniforms.uVignette, {
-      value: 1.0,
-      duration: 0.4,
-      ease: 'power2.in',
-    }, 0.80);
-
-    /* 4. Texture cross-dissolve (v1 → v2) at peak */
-    tl.to(uniforms.uBlend, {
-      value: 1.0,
-      duration: 0.28,
-      ease: 'none',
-    }, 1.08);
-
-    /* 5. Camera PULLS BACK — we're now on the other side */
+    /* B: Sweep past the shoulder — the crossing moment */
     tl.to(camera.position, {
-      z: 4.2,
-      duration: 0.95,
-      ease: 'power3.out',
-    }, 1.28);
+      x: 0.20, y: -0.05, z: 1.0,
+      duration: 0.54, ease: 'power4.in',
+    }, 0.86);
+    tl.to(camera.rotation, {
+      y: 0.04,
+      duration: 0.50, ease: 'power3.in',
+    }, 0.86);
 
-    /* 6. Aberration decays */
+    /* Chroma + vignette spike during sweep */
     tl.to(uniforms.uChroma, {
-      value: 0,
-      duration: 0.7,
-      ease: 'power2.out',
-    }, 1.22);
-
-    /* 7. Vignette settles */
+      value: 5, duration: 0.44, ease: 'power2.in',
+    }, 0.82);
     tl.to(uniforms.uVignette, {
-      value: 0.52,
-      duration: 0.8,
-      ease: 'power2.out',
-    }, 1.35);
+      value: 1.0, duration: 0.38, ease: 'power2.in',
+    }, 0.88);
+
+    /* Cross-dissolve v1 → v2 at peak */
+    tl.to(uniforms.uBlend, {
+      value: 1.0, duration: 0.28, ease: 'none',
+    }, 1.24);
+
+    /* C: Pull back — now on the other side */
+    tl.to(camera.position, {
+      x: 0, y: 0, z: 4.2,
+      duration: 1.00, ease: 'power3.out',
+    }, 1.30);
+    tl.to(camera.rotation, {
+      y: 0, duration: 0.85, ease: 'power2.out',
+    }, 1.30);
+    tl.to(uniforms.uChroma, {
+      value: 0, duration: 0.72, ease: 'power2.out',
+    }, 1.26);
+    tl.to(uniforms.uVignette, {
+      value: 0.52, duration: 0.80, ease: 'power2.out',
+    }, 1.36);
   }
 
   function onEnterComplete() {

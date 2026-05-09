@@ -1108,8 +1108,12 @@
     const handler = (e) => {
       e.preventDefault();
       e.stopPropagation();
-      switchBg(idx);
-      if (idx === 0) triggerCardRain();
+      if (idx === 0) {
+        // Card rain has its own visual — don't overlay a background image
+        triggerCardRain();
+      } else {
+        switchBg(idx);
+      }
     };
     btn.addEventListener('click',    handler);
     btn.addEventListener('touchend', handler, { passive: false });

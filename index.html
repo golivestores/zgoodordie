@@ -649,13 +649,25 @@
   });
 
   /* ── BG IMAGE TEXTURES ─────────────────────────── */
-  const texLoader = new THREE.TextureLoader();
-  const bgTextures = ['bg-1.webp','bg-2.webp','bg-3.webp','bg-4.webp'].map(src => {
+  // Known compressed dimensions (from Python export):
+  // bg-1: 500×1080  bg-2: 499×1080  bg-3: 498×1080  bg-4: 498×1080
+  const BG_ASPECTS = [500/1080, 499/1080, 498/1080, 498/1080];
+  const texLoader   = new THREE.TextureLoader();
+  const bgTextures  = ['bg-1.webp','bg-2.webp','bg-3.webp','bg-4.webp'].map((src, i) => {
     const t = texLoader.load(src, tex => {
-      tex.minFilter = THREE.LinearFilter;
-      tex.magFilter = THREE.LinearFilter;
-      tex.userData.aspect = tex.image.width / tex.image.height;
+      // Override with actual loaded pixel dimensions once available
+      if (tex.image && tex.image.naturalWidth) {
+        tex.userData.aspect = tex.image.naturalWidth / tex.image.naturalHeight;
+      }
+      tex.needsUpdate = true;
     });
+    // Set BEFORE first render to prevent power-of-2 auto-resize in WebGL1
+    t.minFilter        = THREE.LinearFilter;
+    t.magFilter        = THREE.LinearFilter;
+    t.generateMipmaps  = false;
+    t.wrapS            = THREE.ClampToEdgeWrapping;
+    t.wrapT            = THREE.ClampToEdgeWrapping;
+    t.userData.aspect  = BG_ASPECTS[i]; // immediate fallback
     return t;
   });
 

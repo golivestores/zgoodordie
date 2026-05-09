@@ -1094,22 +1094,43 @@
     }, 500);
   });
 
-  /* ── BACKGROUND SWITCHER (texture swap in shader) ── */
-  // In phase3 uBlend=1.0, so only uTex2 is visible — swap that texture
-  let activeBg = -1;
+  /* ── BACKGROUND SWITCHER — A+C: Glitch Cut + Signal Loss ── */
+  let activeBg    = -1;
+  let bgSwitching = false;
 
   function switchBg(idx) {
-    if (activeBg === idx) {
-      // Toggle off — restore video2
-      uniforms.uTex2.value         = tex2;
-      uniforms.uVideoAspect2.value = v2.videoWidth ? v2.videoWidth / v2.videoHeight : 720 / 1280;
-      activeBg = -1;
-    } else {
-      const t = bgTextures[idx];
-      uniforms.uTex2.value         = t;
-      uniforms.uVideoAspect2.value = t.userData.aspect || (500 / 1080);
-      activeBg = idx;
-    }
+    if (bgSwitching) return;
+    bgSwitching = true;
+
+    const toggleOff = (activeBg === idx);
+    activeBg = toggleOff ? -1 : idx;
+
+    const tl = gsap.timeline({ onComplete: () => { bgSwitching = false; } });
+
+    /* ── A: Glitch hit ── */
+    tl.to(uniforms.uChroma,     { value: 9,    duration: 0.07, ease: 'power4.in'  }, 0);
+    tl.to(uniforms.uGrain,      { value: 0.18, duration: 0.07, ease: 'power3.in'  }, 0);
+    tl.to(uniforms.uBrightness, { value: 0.3,  duration: 0.055,ease: 'power4.in'  }, 0.015);
+    tl.to(uniforms.uVignette,   { value: 0.98, duration: 0.07, ease: 'power2.in'  }, 0);
+
+    /* ── Texture swap at distortion peak ── */
+    tl.call(() => {
+      if (toggleOff) {
+        uniforms.uTex2.value         = tex2;
+        uniforms.uVideoAspect2.value = v2.videoWidth
+          ? v2.videoWidth / v2.videoHeight : 720 / 1280;
+      } else {
+        const t = bgTextures[idx];
+        uniforms.uTex2.value         = t;
+        uniforms.uVideoAspect2.value = t.userData.aspect || (500 / 1080);
+      }
+    }, [], 0.08);
+
+    /* ── C: Signal rebuild ── */
+    tl.to(uniforms.uChroma,     { value: 0,     duration: 0.18, ease: 'power2.out' }, 0.08);
+    tl.to(uniforms.uBrightness, { value: 1.0,   duration: 0.22, ease: 'power2.out' }, 0.08);
+    tl.to(uniforms.uVignette,   { value: 0.52,  duration: 0.38, ease: 'power2.out' }, 0.08);
+    tl.to(uniforms.uGrain,      { value: 0.022, duration: 0.60, ease: 'power1.out' }, 0.10);
   }
 
   /* Wire all 4 icon buttons */

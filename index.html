@@ -508,12 +508,10 @@
   <canvas id="c"></canvas>
 
   <!-- Video sources (hidden, streamed as GPU textures) -->
-  <video id="v1" autoplay muted loop playsinline preload="auto">
+  <video id="v1" autoplay muted loop playsinline preload="metadata">
     <source src="new%20video-1.mp4" type="video/mp4">
   </video>
-  <video id="v2" muted playsinline preload="auto">
-    <source src="new%20video-2.mp4" type="video/mp4">
-  </video>
+  <video id="v2" muted playsinline preload="none"></video>
 
   <!-- CRT scanlines -->
   <div class="crt-lines"></div>
@@ -779,8 +777,7 @@
   const mesh = new THREE.Mesh(geo, mat);
   scene.add(mesh);
 
-  /* ── EARLY PRELOAD V2 ─────────────────────────── */
-  v2.load();
+  /* v2 loads lazily when enter() is called */
 
   /* ── VIDEO ASPECT RATIOS ───────────────────────── */
   v1.addEventListener('loadedmetadata', () => {
@@ -810,6 +807,10 @@
     phase = 2;
     document.body.classList.add('phase2');
 
+    if (!v2.src) {
+      v2.src = 'new%20video-2.mp4';
+      v2.load();
+    }
     v2.currentTime = 0;
     v2.loop = true;
     v2.play().catch(() => {});
@@ -871,6 +872,7 @@
     document.body.classList.add('phase3');
     gsap.to('#ui3', { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', delay: 0.2 });
     log('phase3 ✓ — tap ARENA icon');
+    loadGLB(); // background-load GLB now so it's ready when user taps icon1
   }
 
   /* ── TAP / CLICK ───────────────────────────────── */
@@ -961,34 +963,44 @@
   ══════════════════════════════════════════════ */
   let cardProto = null;
   let cardRainActive = false;
+  let glbLoading = false;
+  let glbPendingTrigger = false;
 
   const gltfLoader = new GLTFLoader();
-  log('GLB: loading...');
-  gltfLoader.load('card%203d.glb', (gltf) => {
-    cardProto = gltf.scene;
 
-    // Center model origin
-    const box0 = new THREE.Box3().setFromObject(cardProto);
-    const center = box0.getCenter(new THREE.Vector3());
-    cardProto.position.sub(center);
-    cardProto.updateMatrixWorld(true);
+  function loadGLB() {
+    if (glbLoading || cardProto) return;
+    glbLoading = true;
+    log('GLB: loading...');
+    gltfLoader.load('card%203d.glb', (gltf) => {
+      cardProto = gltf.scene;
 
-    // Raw size: x≈0.0017 (edge/thickness), y≈0.15 (height), z≈0.098 (width)
-    // Card face is in Y-Z plane; rotate around Y by -90° so face points toward camera (+Z)
-    cardProto.rotation.y = -Math.PI / 2;
-    cardProto.updateMatrixWorld(true);
+      const box0 = new THREE.Box3().setFromObject(cardProto);
+      const center = box0.getCenter(new THREE.Vector3());
+      cardProto.position.sub(center);
+      cardProto.updateMatrixWorld(true);
 
-    // Re-measure after rotation — now x≈face-width, y≈face-height, z≈thickness
-    const box1 = new THREE.Box3().setFromObject(cardProto);
-    cardProto.userData.faceSize = box1.getSize(new THREE.Vector3());
-    const fs2 = cardProto.userData.faceSize;
-    log(`GLB: ready ✓ face=${fs2.x.toFixed(3)}x${fs2.y.toFixed(3)}`);
-  }, undefined, (err) => { log('GLB ERROR: ' + err.message); console.error('[GLB]', err); });
+      cardProto.rotation.y = -Math.PI / 2;
+      cardProto.updateMatrixWorld(true);
+
+      const box1 = new THREE.Box3().setFromObject(cardProto);
+      cardProto.userData.faceSize = box1.getSize(new THREE.Vector3());
+      const fs2 = cardProto.userData.faceSize;
+      log(`GLB: ready ✓ face=${fs2.x.toFixed(3)}x${fs2.y.toFixed(3)}`);
+
+      if (glbPendingTrigger) { glbPendingTrigger = false; triggerCardRain(); }
+    }, undefined, (err) => { log('GLB ERROR: ' + err.message); console.error('[GLB]', err); });
+  }
 
   function triggerCardRain() {
     log('icon1 tapped');
     if (cardRainActive) { log('already active'); return; }
-    if (!cardProto) { log('GLB not ready yet!'); return; }
+    if (!cardProto) {
+      glbPendingTrigger = true;
+      loadGLB();
+      log('GLB not ready — loading now, will trigger when done');
+      return;
+    }
     cardRainActive = true;
 
     // Hide icon bar

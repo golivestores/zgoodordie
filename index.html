@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ZGOODORDIE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Cormorant+Garamond:ital,wght@0,300;1,300&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #000;
+      overflow: hidden;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Canvas — fixed, full-bleed WebGL output */
+    #c {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      z-index: 0;
+    }
+
+    /* Hidden video elements used as GPU textures */
+    #v1, #v2 {
+      position: absolute;
+      width: 1px; height: 1px;
+      top: -9999px;
+      pointer-events: none;
+    }
+
+    /* ── PHASE 1 UI ─────────────────────────────────── */
+    #ui {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding:
+        max(env(safe-area-inset-top,  40px), 40px) 28px
+        max(env(safe-area-inset-bottom, 32px), 32px);
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+
+    body.phase2 #ui,
+    body.phase3 #ui { opacity: 0; }
+
+    .ui-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .brand {
+      font-family: 'Cinzel', serif;
+      font-weight: 400;
+      font-size: 9px;
+      letter-spacing: 0.5em;
+      color: rgba(245,240,228,0.88);
+      text-shadow: 0 0 20px rgba(0,0,0,0.9);
+    }
+
+    .phase-tag {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      color: rgba(165,158,145,0.6);
+    }
+
+    .ui-bottom {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .enter-label {
+      font-family: 'Cinzel', serif;
+      font-size: 8px;
+      letter-spacing: 0.62em;
+      color: rgba(165,158,145,0.75);
+      opacity: 0;
+      animation: rise 1s 2s ease forwards;
+    }
+
+    .enter-bar {
+      width: 1px;
+      height: 48px;
+      background: linear-gradient(to bottom, rgba(245,240,228,0.65), transparent);
+      opacity: 0;
+      animation: rise 1s 2.4s ease forwards, blink 2.6s 3.4s ease-in-out infinite;
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 0.6; transform: translateY(0); }
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 0.22; }
+      50%       { opacity: 0.72; }
+    }
+
+    /* ── TAP ZONE ───────────────────────────────────── */
+    #tap {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      cursor: pointer;
+    }
+
+    body.phase2 #tap,
+    body.phase3 #tap { pointer-events: none; }
+
+    /* ── SCROLL HINT (phase 3) ──────────────────────── */
+    #scroll-hint {
+      position: fixed;
+      bottom: max(env(safe-area-inset-bottom, 32px), 32px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 25;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.phase3 #scroll-hint {
+      animation: scroll-in 0.8s 1.4s ease forwards;
+    }
+
+    @keyframes scroll-in {
+      to { opacity: 1; }
+    }
+
+    .sh-label {
+      font-family: 'Cinzel', serif;
+      font-size: 7px;
+      letter-spacing: 0.65em;
+      color: rgba(165,158,145,0.6);
+    }
+
+    .sh-bar {
+      width: 1px;
+      height: 34px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .sh-bar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(245,240,228,0.65), transparent);
+      animation: drop 2s ease-in-out infinite;
+    }
+
+    @keyframes drop {
+      0%   { transform: translateY(-100%); }
+      100% { transform: translateY(200%); }
+    }
+
+    /* ── SCROLL CONTENT ─────────────────────────────── */
+    #scroll-root {
+      position: relative;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .vh-gap { height: 100dvh; }
+
+    .section {
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      padding: 72px 32px;
+      pointer-events: auto;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.78);
+      z-index: 0;
+    }
+
+    .s-inner { position: relative; z-index: 1; }
+
+    .s-count {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      color: rgba(155,148,136,0.5);
+      margin-bottom: 18px;
+      display: block;
+    }
+
+    .s-title {
+      font-family: 'Cinzel', serif;
+      font-weight: 600;
+      font-size: clamp(34px, 11vw, 58px);
+      letter-spacing: 0.07em;
+      line-height: 1.02;
+      color: #f3ede0;
+      margin-bottom: 10px;
+    }
+
+    .s-subtitle {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 13px;
+      letter-spacing: 0.24em;
+      color: rgba(155,148,136,0.7);
+      margin-bottom: 30px;
+    }
+
+    .s-rule {
+      width: 30px;
+      height: 1px;
+      background: rgba(155,148,136,0.3);
+      margin-bottom: 26px;
+    }
+
+    .s-copy {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 17px;
+      line-height: 1.82;
+      color: rgba(155,148,136,0.85);
+      max-width: 290px;
+    }
+
+    .s-ghost {
+      position: absolute;
+      right: 16px;
+      bottom: 24px;
+      font-family: 'Cinzel', serif;
+      font-size: 130px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.022);
+      line-height: 1;
+      user-select: none;
+      z-index: 0;
+    }
+
+    /* ── FOOTER ─────────────────────────────────────── */
+    footer {
+      background: #000;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      padding: 80px 32px 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+      pointer-events: auto;
+    }
+
+    .f-logo {
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      letter-spacing: 0.55em;
+      color: rgba(243,237,224,0.55);
+      margin-bottom: 4px;
+    }
+
+    .f-line {
+      width: 1px;
+      height: 28px;
+      background: rgba(155,148,136,0.2);
+      margin: 6px 0;
+    }
+
+    .f-quote {
+      font-family: 'Cormorant Garamond', serif;
+      font-style: italic;
+      font-size: 14px;
+      line-height: 1.65;
+      letter-spacing: 0.08em;
+      color: rgba(155,148,136,0.38);
+      max-width: 260px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- WebGL canvas -->
+  <canvas id="c"></canvas>
+
+  <!-- Video sources (hidden, streamed as GPU textures) -->
+  <video id="v1" autoplay muted loop playsinline preload="auto">
+    <source src="new%20video-1.mp4" type="video/mp4">
+  </video>
+  <video id="v2" muted playsinline preload="auto">
+    <source src="new%20video-2.mp4" type="video/mp4">
+  </video>
+
+  <!-- Phase 1 overlay -->
+  <div id="ui">
+    <div class="ui-top">
+      <span class="brand">Z G O O D O R D I E</span>
+      <span class="phase-tag">Phase 1.0</span>
+    </div>
+    <div class="ui-bottom">
+      <span class="enter-label">TOUCH TO ENTER</span>
+      <div class="enter-bar"></div>
+    </div>
+  </div>
+
+  <!-- Tap zone -->
+  <div id="tap"></div>
+
+  <!-- Scroll hint (shown after transition) -->
+  <div id="scroll-hint">
+    <div class="sh-label">SCROLL</div>
+    <div class="sh-bar"></div>
+  </div>
+
+  <!-- Brand content (scrolls over fixed canvas) -->
+  <div id="scroll-root">
+    <div class="vh-gap"></div>
+
+    <div class="section">
+      <div class="s-ghost">Z</div>
+      <div class="s-inner">
+        <span class="s-count">01 / 04</span>
+        <div class="s-title">Z<br>GOODORDIE</div>
+        <div class="s-subtitle">Daily Lucky Draw</div>
+        <div class="s-rule"></div>
+        <div class="s-copy">Touch NFC to enter the space. Exclusive privileges for the faithful — you shall obtain everything you desire.</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="s-ghost">S</div>
+      <div class="s-inner">
+        <span class="s-count">02 / 04</span>
+        <div class="s-title">Z<br>SOUL</div>
+        <div class="s-subtitle">Spiritual Solace</div>
+        <div class="s-rule"></div>
+        <div class="s-copy">I guess it comes down to a simple choice — Zgoodordie. Your soul, your path, your verdict.</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="s-ghost">W</div>
+      <div class="s-inner">
+        <span class="s-count">03 / 04</span>
+        <div class="s-title">Z<br>WISH</div>
+        <div class="s-subtitle">Wish Fulfillment</div>
+        <div class="s-rule"></div>
+        <div class="s-copy">Your vision, to be seen, to be fulfilled. A global stage for those who dare to be witnessed.</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="s-ghost">A</div>
+      <div class="s-inner">
+        <span class="s-count">04 / 04</span>
+        <div class="s-title">Z<br>ATTITUDE</div>
+        <div class="s-subtitle">54 Divine Maxims</div>
+        <div class="s-rule"></div>
+        <div class="s-copy">Various rebel creeds, define your unruly life. ZGOODORDIE will be your first and most loyal fan.</div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="f-logo">Z G O O D O R D I E</div>
+      <div class="f-line"></div>
+      <div class="f-quote">"Anyone can be me.<br>Perhaps you haven't fully found yourself yet."</div>
+    </footer>
+  </div>
+
+  <!-- GSAP 3 -->
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js"
+    }
+  }
+  </script>
+  <script type="module">
+  import * as THREE from 'three';
+
+  /* ═══════════════════════════════════════════════════
+     ZGOODORDIE  —  WebGL Cinematic Camera System
+  ═══════════════════════════════════════════════════ */
+
+  const canvas = document.getElementById('c');
+  const v1     = document.getElementById('v1');
+  const v2     = document.getElementById('v2');
+  const tapEl  = document.getElementById('tap');
+
+  /* ── RENDERER ──────────────────────────────────── */
+  const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: false,
+    alpha: false,
+    powerPreference: 'high-performance',
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setClearColor(0x000000, 1);
+
+  /* ── SCENE & CAMERA ────────────────────────────── */
+  const scene  = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(
+    60,
+    window.innerWidth / window.innerHeight,
+    0.001, 100
+  );
+  camera.position.z = 5;
+
+  /* ── VIDEO TEXTURES ────────────────────────────── */
+  const tex1 = new THREE.VideoTexture(v1);
+  const tex2 = new THREE.VideoTexture(v2);
+  [tex1, tex2].forEach(t => {
+    t.minFilter = THREE.LinearFilter;
+    t.magFilter = THREE.LinearFilter;
+  });
+
+  /* ── SHADER ────────────────────────────────────── */
+  const VERT = /* glsl */`
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  const FRAG = /* glsl */`
+    precision mediump float;
+
+    uniform sampler2D uTex1;
+    uniform sampler2D uTex2;
+    uniform float     uBlend;
+    uniform float     uVignette;
+    uniform float     uChroma;
+    uniform float     uGrain;
+    uniform float     uBrightness;
+    uniform float     uTime;
+    uniform float     uVideoAspect;
+    uniform float     uScreenAspect;
+
+    varying vec2 vUv;
+
+    /* ── Film-grain hash ── */
+    float hash(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    }
+
+    /* ── Object-fit: cover UV mapping ── */
+    vec2 coverUV(vec2 uv) {
+      vec2 st    = uv - 0.5;
+      float ratio = uScreenAspect / uVideoAspect;
+      if (ratio < 1.0) {
+        /* screen taller than video  → crop left/right */
+        st.x *= ratio;
+      } else {
+        /* screen wider than video   → crop top/bottom */
+        st.y /= ratio;
+      }
+      return clamp(st + 0.5, 0.0, 1.0);
+    }
+
+    void main() {
+      vec2 uv  = coverUV(vUv);
+      vec2 dir = (vUv - 0.5) * uChroma * 0.007;
+
+      /* Chromatic aberration on tex1 */
+      vec4 c1;
+      c1.r = texture2D(uTex1, uv + dir).r;
+      c1.g = texture2D(uTex1, uv).g;
+      c1.b = texture2D(uTex1, uv - dir).b;
+      c1.a = 1.0;
+
+      /* Subtle chroma on tex2 */
+      vec4 c2;
+      c2.r = texture2D(uTex2, uv + dir * 0.25).r;
+      c2.g = texture2D(uTex2, uv).g;
+      c2.b = texture2D(uTex2, uv - dir * 0.25).b;
+      c2.a = 1.0;
+
+      vec4 color = mix(c1, c2, clamp(uBlend, 0.0, 1.0));
+
+      /* Vignette */
+      float dist = length((vUv - 0.5) * vec2(1.5, 1.0));
+      float vig  = 1.0 - smoothstep(0.28, 1.05, dist);
+      color.rgb *= mix(1.0, vig, uVignette);
+
+      /* Film grain (24fps cadence) */
+      float frame = floor(uTime * 24.0);
+      float grain = hash(vUv + vec2(frame * 0.013, frame * 0.007)) * 2.0 - 1.0;
+      color.rgb  += grain * uGrain;
+
+      /* Brightness (fade on scroll) */
+      color.rgb  *= uBrightness;
+
+      gl_FragColor = color;
+    }
+  `;
+
+  const uniforms = {
+    uTex1:         { value: tex1 },
+    uTex2:         { value: tex2 },
+    uBlend:        { value: 0.0 },
+    uVignette:     { value: 0.68 },
+    uChroma:       { value: 0.0 },
+    uGrain:        { value: 0.022 },
+    uBrightness:   { value: 1.0 },
+    uTime:         { value: 0.0 },
+    uVideoAspect:  { value: 16 / 9 },
+    uScreenAspect: { value: window.innerWidth / window.innerHeight },
+  };
+
+  /* ── PLANE — fills frustum at z=0 ─────────────── */
+  function frustumSize(camZ) {
+    const fovRad = (camera.fov * Math.PI) / 180;
+    const h = 2 * Math.tan(fovRad / 2) * camZ;
+    return { w: h * camera.aspect * 1.25, h: h * 1.25 };
+  }
+
+  const fs  = frustumSize(camera.position.z);
+  const geo = new THREE.PlaneGeometry(fs.w, fs.h);
+  const mat = new THREE.ShaderMaterial({ uniforms, vertexShader: VERT, fragmentShader: FRAG });
+  const mesh = new THREE.Mesh(geo, mat);
+  scene.add(mesh);
+
+  /* ── VIDEO ASPECT RATIO ────────────────────────── */
+  v1.addEventListener('loadedmetadata', () => {
+    if (v1.videoWidth) {
+      uniforms.uVideoAspect.value = v1.videoWidth / v1.videoHeight;
+    }
+  });
+
+  /* ── RESIZE ────────────────────────────────────── */
+  window.addEventListener('resize', () => {
+    const w = window.innerWidth, h = window.innerHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+    uniforms.uScreenAspect.value = w / h;
+  });
+
+  /* ══════════════════════════════════════════════
+     PHASE MANAGEMENT
+  ══════════════════════════════════════════════ */
+  let phase = 1;
+
+  /* ── ENTER (Phase 1 → 2 → 3) ──────────────────── */
+  function enter() {
+    if (phase !== 1) return;
+    phase = 2;
+    document.body.classList.add('phase2');
+
+    v2.currentTime = 0;
+    v2.play().catch(() => {});
+
+    const tl = gsap.timeline({ onComplete: onEnterComplete });
+
+    /* 1. Camera RUSHES FORWARD — the push-in */
+    tl.to(camera.position, {
+      z: 0.06,
+      duration: 1.35,
+      ease: 'power3.in',
+    }, 0);
+
+    /* 2. Chromatic aberration climbs — "warping through" */
+    tl.to(uniforms.uChroma, {
+      value: 6,
+      duration: 0.55,
+      ease: 'power2.in',
+    }, 0.72);
+
+    /* 3. Vignette clamps hard at the moment of penetration */
+    tl.to(uniforms.uVignette, {
+      value: 1.0,
+      duration: 0.4,
+      ease: 'power2.in',
+    }, 0.80);
+
+    /* 4. Texture cross-dissolve (v1 → v2) at peak */
+    tl.to(uniforms.uBlend, {
+      value: 1.0,
+      duration: 0.28,
+      ease: 'none',
+    }, 1.08);
+
+    /* 5. Camera PULLS BACK — we're now on the other side */
+    tl.to(camera.position, {
+      z: 4.2,
+      duration: 0.95,
+      ease: 'power3.out',
+    }, 1.28);
+
+    /* 6. Aberration decays */
+    tl.to(uniforms.uChroma, {
+      value: 0,
+      duration: 0.7,
+      ease: 'power2.out',
+    }, 1.22);
+
+    /* 7. Vignette settles */
+    tl.to(uniforms.uVignette, {
+      value: 0.52,
+      duration: 0.8,
+      ease: 'power2.out',
+    }, 1.35);
+  }
+
+  function onEnterComplete() {
+    phase = 3;
+    document.body.classList.remove('phase2');
+    document.body.classList.add('phase3');
+
+    /* Unlock scrolling */
+    document.documentElement.style.overflow = 'auto';
+    document.documentElement.style.height   = 'auto';
+    document.body.style.overflow = 'auto';
+    document.body.style.height   = 'auto';
+  }
+
+  /* ── TAP / CLICK ───────────────────────────────── */
+  tapEl.addEventListener('click', enter);
+  tapEl.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    enter();
+  }, { passive: false });
+
+  /* ── SCROLL (Phase 3) ──────────────────────────── */
+  window.addEventListener('scroll', () => {
+    if (phase !== 3) return;
+
+    const progress = Math.min(window.scrollY / window.innerHeight, 1);
+
+    /* Camera retreats slightly — scene recedes behind content */
+    camera.position.z = 4.2 + progress * 2.4;
+
+    /* Scene dims as brand content takes over */
+    uniforms.uBrightness.value = Math.max(1 - progress * 0.85, 0.08);
+
+  }, { passive: true });
+
+  /* ── RENDER LOOP ───────────────────────────────── */
+  const clock = new THREE.Clock();
+
+  (function animate() {
+    requestAnimationFrame(animate);
+
+    const t = clock.getElapsedTime();
+    uniforms.uTime.value = t;
+
+    /* Phase 1: slow camera "breathing" */
+    if (phase === 1) {
+      camera.position.z = 5 + Math.sin(t * 0.38) * 0.055;
+      camera.rotation.z = Math.sin(t * 0.22) * 0.0025;
+    }
+
+    /* Force texture upload each frame while video is live */
+    if (v1.readyState >= 2) tex1.needsUpdate = true;
+    if (v2.readyState >= 2) tex2.needsUpdate = true;
+
+    renderer.render(scene, camera);
+  })();
+
+  /* ── PREVENT OVERSCROLL IN PHASE 1 & 2 ─────────── */
+  document.addEventListener('touchmove', (e) => {
+    if (phase < 3) e.preventDefault();
+  }, { passive: false });
+
+  /* ── ENSURE V1 PLAYS (autoplay attribute is unreliable for off-screen elements) ── */
+  function startV1() {
+    if (v1.paused) {
+      v1.play().catch(err => console.warn('[v1 play failed]', err));
+    }
+  }
+  if (v1.readyState >= 1) {
+    startV1();
+  } else {
+    v1.addEventListener('loadedmetadata', startV1, { once: true });
+    v1.addEventListener('canplay', startV1, { once: true });
+  }
+
+  </script>
+</body>
+</html>

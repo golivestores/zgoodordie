@@ -625,6 +625,7 @@
   <script type="module">
   import * as THREE from 'three';
   import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 
   /* ═══════════════════════════════════════════════════
      ZGOODORDIE  —  WebGL Cinematic Camera System
@@ -1014,13 +1015,16 @@
   let glbLoading = false;
   let glbPendingTrigger = false;
 
+  const dracoLoader = new DRACOLoader();
+  dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/libs/draco/');
   const gltfLoader = new GLTFLoader();
+  gltfLoader.setDRACOLoader(dracoLoader);
 
   function loadGLB() {
     if (glbLoading || cardProto) return;
     glbLoading = true;
     log('GLB: loading...');
-    gltfLoader.load('card%203d.glb', (gltf) => {
+    gltfLoader.load('card%203d.opt.glb', (gltf) => {
       cardProto = gltf.scene;
 
       const box0 = new THREE.Box3().setFromObject(cardProto);

@@ -962,7 +962,7 @@
     _swipeArmed = false;
     const dy = e.changedTouches[0].clientY - _sy;
     const dt = Date.now() - _st;
-    if (dy < -80 && dt < 600) {
+    if (dy > 80 && dt < 600) {
       e.stopImmediatePropagation(); // prevent icon-tap from also firing
       back();
     }

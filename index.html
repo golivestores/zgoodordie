@@ -296,9 +296,10 @@
         inset 0 0 0 1px rgba(255,255,255,0.10);
     }
 
+    /* Tap feedback uses filter (not transform) to avoid GSAP float conflict */
     .icon-card:active {
-      transform: rotateX(4deg) translateY(-2px) scale(0.98);
-      transition-duration: 0.08s;
+      filter: brightness(1.15);
+      transition: filter 0.08s ease;
     }
 
     .icon-card img {
@@ -842,6 +843,10 @@
     phase = 2;
     document.body.classList.add('phase2');
 
+    // Hide bottom HUD (button + progress) — splash GSAP set inline opacity:1,
+    // so the CSS body.phase2 rule alone won't override it
+    gsap.to(['#ui', '.hud-btn-wrap'], { opacity: 0, duration: 0.35, ease: 'power2.in' });
+
     if (!v2.src) {
       v2.src = 'new%20video-2.mp4';
       v2.load();
@@ -906,8 +911,49 @@
     document.body.classList.remove('phase2');
     document.body.classList.add('phase3');
     gsap.to('#ui3', { opacity: 1, y: 0, duration: 0.6, ease: 'power2.out', delay: 0.2 });
+    // Start floating after card-rise entry animation finishes (~1.4s)
+    setTimeout(startCardFloat, 1400);
     log('phase3 ✓ — tap ARENA icon');
     loadGLB(); // background-load GLB now so it's ready when user taps icon1
+  }
+
+  /* ── ICON CARD FLOAT (Phase 3) ─────────────────
+     Each card: independent sine-wave Y float +
+     synchronized shadow expansion (depth illusion) */
+  function startCardFloat() {
+    document.querySelectorAll('.icon-card').forEach((card, i) => {
+      // CSS `animation: card-rise ... both` permanently overrides inline
+      // transform via fill-mode. Kill it once card-rise has played, and
+      // restore opacity:1 (which the killed animation was holding).
+      card.style.animation = 'none';
+      card.style.opacity   = '1';
+      // Anchor baseline transform — GSAP inline now owns transform
+      gsap.set(card, { rotationX: 10, y: 0 });
+
+      // Y float — large amplitude for mobile visibility
+      gsap.to(card, {
+        y: -14,
+        duration: 2.2,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+        delay: i * 0.55,
+      });
+
+      // Shadow expands & softens as card lifts (fakes light source)
+      gsap.to(card, {
+        boxShadow: '0 3px 0 1px rgba(8,8,10,0.80), 0 5px 0 2px rgba(4,4,5,0.65), 0 30px 44px rgba(0,0,0,0.48), 0 0 0 1px rgba(0,255,180,0.22), 0 0 22px rgba(0,255,180,0.10), inset 0 0 0 1px rgba(255,255,255,0.09)',
+        duration: 2.2,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+        delay: i * 0.55,
+      });
+    });
+  }
+
+  function stopCardFloat() {
+    gsap.killTweensOf('.icon-card');
   }
 
   /* ── TAP / CLICK ───────────────────────────────── */
@@ -1022,7 +1068,7 @@
       tl.to(uniforms.uGrain,      { value: 0.022, duration: 0.85, ease: 'power1.out' }, 0.70);
 
       /* A-2: HUD reveals during recovery (0.80 → 1.35s) */
-      tl.fromTo(['#ui', '.hud-corner', '.crt-lines'],
+      tl.fromTo(['#ui', '.hud-corner', '.crt-lines', '.hud-btn-wrap'],
         { opacity: 0 },
         { opacity: 1, duration: 0.55, ease: 'power2.out', stagger: 0.05 },
         0.80
@@ -1120,7 +1166,8 @@
     }
     cardRainActive = true;
 
-    // Hide icon bar
+    // Hide icon bar + stop float
+    stopCardFloat();
     gsap.to('#ui3', { opacity: 0, y: 16, duration: 0.3 });
     document.getElementById('ui3').style.pointerEvents = 'none';
 
@@ -1231,6 +1278,7 @@
         cardRainActive = false;
         gsap.to('#ui3', { opacity: 1, y: 0, duration: 0.5 });
         document.getElementById('ui3').style.pointerEvents = 'auto';
+        startCardFloat(); // resume float when icon bar returns
       }});
     }, 500);
   });

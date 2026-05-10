@@ -360,6 +360,13 @@
       animation: none !important;
     }
 
+    /* After splash, GSAP drives the fade-in — kill the original CSS
+       hud-fade animations to avoid conflict / stagger holes */
+    body.splash-done .hud-corner,
+    body.splash-done .hud-btn-wrap {
+      animation: none !important;
+    }
+
     /* ── BACKGROUND LAYER ───────────────────────── */
     #bg-layer {
       position: fixed;
@@ -951,19 +958,77 @@
   }
 
   /* ══════════════════════════════════════════════
-     SPLASH DISMISSAL
+     SPLASH DISMISSAL  —  glitch-bridge transition (A+B)
+     A: time-overlap splash fade with HUD reveal
+     B: WebGL chroma/grain spike under splash as visual bridge
   ══════════════════════════════════════════════ */
   (function setupSplash() {
     const splash = document.getElementById('splash');
     if (!splash) return;
     let dismissed = false;
+
     const dismiss = () => {
       if (dismissed) return;
       dismissed = true;
-      document.body.classList.remove('splash');
-      document.body.classList.add('splash-done');
-      setTimeout(() => splash.remove(), 700);
+
+      // expose uniforms for debugging in DevTools console
+      window._u = uniforms;
+      console.log('[splash] dismiss start, uniforms exposed as window._u');
+      // expose a re-trigger for the disturbance only (no splash)
+      window._testDisturbance = (peak = 0.5) => {
+        const tl2 = gsap.timeline();
+        tl2.to(uniforms.uChroma,     { value: 7.5,  duration: 0.22, ease: 'power3.in' }, 0);
+        tl2.to(uniforms.uGrain,      { value: 0.18, duration: 0.22, ease: 'power3.in' }, 0);
+        tl2.to(uniforms.uBrightness, { value: 0.40, duration: 0.22, ease: 'power3.in' }, 0);
+        tl2.to(uniforms.uVignette,   { value: 1.0,  duration: 0.22, ease: 'power3.in' }, 0);
+        tl2.to(uniforms.uChroma,     { value: 0,    duration: 0.55, ease: 'power2.out' }, 0.22 + peak);
+        tl2.to(uniforms.uBrightness, { value: 1.0,  duration: 0.60, ease: 'power2.out' }, 0.22 + peak);
+        tl2.to(uniforms.uVignette,   { value: 0.68, duration: 0.65, ease: 'power2.out' }, 0.22 + peak);
+        tl2.to(uniforms.uGrain,      { value: 0.022,duration: 0.85, ease: 'power1.out' }, 0.22 + peak);
+        return 'disturbance fired with hold=' + peak + 's';
+      };
+      console.log('[splash] call _testDisturbance(holdSeconds) anytime to re-trigger the spike');
+
+      const tl = gsap.timeline({
+        onStart:    () => console.log('[splash] timeline START'),
+        onComplete: () => { console.log('[splash] timeline DONE'); splash.remove(); },
+      });
+
+      /* B-1: disturbance ramps up first (0.05 → 0.35s) — splash still on top
+              the disturbance is hidden behind splash but ready to mask the cut */
+      tl.to(uniforms.uChroma,     { value: 12,   duration: 0.30, ease: 'power2.in' }, 0.05);
+      tl.to(uniforms.uGrain,      { value: 0.22, duration: 0.30, ease: 'power2.in' }, 0.05);
+      tl.to(uniforms.uBrightness, { value: 0.30, duration: 0.30, ease: 'power2.in' }, 0.05);
+      tl.to(uniforms.uVignette,   { value: 1.0,  duration: 0.30, ease: 'power2.in' }, 0.05);
+
+      /* A-1: at peak disturbance, splash is HARD-CUT off (no fade)
+              — the heavy chroma + dark + grain masks the abrupt change */
+      tl.call(() => {
+        splash.style.opacity = '0';
+        document.body.classList.remove('splash');
+        document.body.classList.add('splash-done');
+        console.log('[splash] hard-cut at peak disturbance');
+      }, [], 0.35);
+
+      /* B-2: HOLD peak for 0.30s — eye registers the disturbed scene */
+      tl.to(uniforms.uChroma,     { value: 12,   duration: 0.30 }, 0.35);
+      tl.to(uniforms.uGrain,      { value: 0.22, duration: 0.30 }, 0.35);
+      tl.to(uniforms.uBrightness, { value: 0.30, duration: 0.30 }, 0.35);
+
+      /* B-3: signal recovery (0.65 → 1.30s) */
+      tl.to(uniforms.uChroma,     { value: 0,     duration: 0.60, ease: 'power2.out' }, 0.65);
+      tl.to(uniforms.uBrightness, { value: 1.0,   duration: 0.65, ease: 'power2.out' }, 0.65);
+      tl.to(uniforms.uVignette,   { value: 0.68,  duration: 0.65, ease: 'power2.out' }, 0.65);
+      tl.to(uniforms.uGrain,      { value: 0.022, duration: 0.85, ease: 'power1.out' }, 0.70);
+
+      /* A-2: HUD reveals during recovery (0.80 → 1.35s) */
+      tl.fromTo(['#ui', '.hud-corner', '.crt-lines'],
+        { opacity: 0 },
+        { opacity: 1, duration: 0.55, ease: 'power2.out', stagger: 0.05 },
+        0.80
+      );
     };
+
     splash.addEventListener('ended', dismiss);
     // Fallback: if `ended` never fires (some mobile browsers, autoplay denial)
     setTimeout(dismiss, 4500);

@@ -906,6 +906,68 @@
     }, 1.36);
   }
 
+  /* ── BACK (Phase 3 → Phase 1) — upward dolly retreat ─── */
+  function back() {
+    if (phase !== 3 || cardRainActive) return;
+    phase = 2; // transitional
+    document.body.classList.remove('phase3');
+    document.body.classList.add('phase2');
+
+    stopCardFloat();
+
+    // Hide icon bar + restore Phase 1 HUD opacity (was 0 from enter())
+    gsap.to('#ui3', { opacity: 0, y: 28, duration: 0.40, ease: 'power2.in' });
+
+    const tl = gsap.timeline({ onComplete: onBackComplete });
+
+    /* Camera arcs UP + BACK — matches the "swipe up" gesture metaphor */
+    tl.to(camera.position, { y: 0.55, duration: 0.65, ease: 'power2.in' }, 0);
+    tl.to(camera.position, { z: 6.4,  duration: 0.95, ease: 'power2.inOut' }, 0);
+    tl.to(camera.rotation, { x: -0.10, duration: 0.65, ease: 'power2.in' }, 0);
+
+    /* Cross-dissolve v2 → v1 */
+    tl.to(uniforms.uBlend, { value: 0.0, duration: 0.45, ease: 'none' }, 0.20);
+
+    /* Brief chroma + vignette spike for transition energy */
+    tl.to(uniforms.uChroma,   { value: 4.5,  duration: 0.35, ease: 'power2.in' }, 0.10);
+    tl.to(uniforms.uVignette, { value: 0.92, duration: 0.45, ease: 'power2.in' }, 0.10);
+
+    /* Settle to Phase 1 baseline (0, 0, 5) */
+    tl.to(camera.position, { y: 0, z: 5,    duration: 0.55, ease: 'power2.out' }, 0.85);
+    tl.to(camera.rotation, { x: 0,          duration: 0.50, ease: 'power2.out' }, 0.85);
+    tl.to(uniforms.uChroma,   { value: 0,    duration: 0.55, ease: 'power2.out' }, 0.85);
+    tl.to(uniforms.uVignette, { value: 0.68, duration: 0.55, ease: 'power2.out' }, 0.85);
+
+    /* Phase 1 HUD reveals during settle */
+    tl.to(['#ui', '.hud-btn-wrap'], { opacity: 1, duration: 0.45, ease: 'power2.out' }, 1.00);
+  }
+
+  function onBackComplete() {
+    phase = 1;
+    document.body.classList.remove('phase2');
+    if (!v2.paused) v2.pause(); // free decode pipeline
+  }
+
+  /* ── SWIPE-UP gesture (Phase 3 → Phase 1) ────────────── */
+  let _sy = 0, _st = 0, _swipeArmed = false;
+  document.addEventListener('touchstart', (e) => {
+    if (phase !== 3 || cardRainActive) { _swipeArmed = false; return; }
+    _sy = e.touches[0].clientY;
+    _st = Date.now();
+    _swipeArmed = true;
+  }, { passive: true, capture: true });
+
+  document.addEventListener('touchend', (e) => {
+    if (!_swipeArmed) return;
+    _swipeArmed = false;
+    const dy = e.changedTouches[0].clientY - _sy;
+    const dt = Date.now() - _st;
+    if (dy < -80 && dt < 600) {
+      e.stopImmediatePropagation(); // prevent icon-tap from also firing
+      back();
+    }
+  }, { capture: true });
+
   function onEnterComplete() {
     phase = 3;
     document.body.classList.remove('phase2');
@@ -1193,7 +1255,7 @@
       c.scale.setScalar(startS);
       c.position.set(
         (i - HERO) * fW * 0.26 + (Math.random() - 0.5) * 0.35,
-        fH * 0.85 + Math.random() * fH * 0.45,
+        fH * 0.55 + Math.random() * fH * 0.20,
         cardZ + (Math.random() - 0.5) * 0.55
       );
       // Start with card face roughly visible (slight tilt from face-forward)
@@ -1210,9 +1272,9 @@
 
     /* Phase 1 — all cards fall & tumble (0 – ~2.8s, 2× slower) */
     cards.forEach((c, i) => {
-      const t0  = i * 0.17;
+      const t0  = i * 0.09;
       const endY = (i === HERO) ? 0.05 : (Math.random() - 0.55) * fH * 0.55;
-      tl.to(c.position, { y: endY, duration: 2.3, ease: 'power2.in' }, t0);
+      tl.to(c.position, { y: endY, duration: 2.3, ease: 'power1.in' }, t0);
       tl.to(c.rotation, {
         x: `+=${(2 + Math.random() * 3) * Math.PI}`,
         y: `+=${(3 + Math.random() * 2) * Math.PI}`,

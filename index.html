@@ -405,101 +405,45 @@
     }
 
     #flip-card {
-      width: min(70vw, 340px);
-      aspect-ratio: 63 / 88;
-      perspective: 1400px;
+      width: min(86vw, 460px);
+      aspect-ratio: 1 / 1;
     }
 
     .flip-inner {
       width: 100%; height: 100%;
-      transform-style: preserve-3d;
-      transform: rotateY(0deg);
-      transition: transform 0.95s cubic-bezier(0.4, 0, 0.2, 1);
-      border-radius: 20px;
     }
 
-    #card-overlay.flipped .flip-inner {
-      transform: rotateY(180deg);
-    }
+    .flip-back { display: none; }
 
-    .flip-back, .flip-front {
-      position: absolute;
-      inset: 0;
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
-      border-radius: 20px;
-      overflow: hidden;
-    }
-
-    .flip-back {
-      background:
-        radial-gradient(ellipse at 30% 20%, rgba(0,255,180,0.07) 0%, transparent 55%),
-        linear-gradient(145deg, #0a0f0d 0%, #0e1f18 50%, #080e0c 100%);
-      border: 1px solid rgba(0,255,180,0.28);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow:
-        0 0 0 1px rgba(0,255,180,0.10) inset,
-        0 24px 60px rgba(0,0,0,0.8);
-    }
-
-    .card-back-inner {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .card-back-brand {
-      font-family: 'JetBrains Mono', monospace;
-      font-weight: 500;
-      font-size: clamp(12px, 3.5vw, 18px);
-      letter-spacing: 0.5em;
-      text-indent: 0.5em;
-      color: rgba(0,255,180,0.65);
-      text-shadow: 0 0 28px rgba(0,255,180,0.35);
-    }
-
-    .card-back-rule {
-      width: 60%;
-      height: 1px;
-      background: linear-gradient(to right, transparent, rgba(0,255,180,0.3), transparent);
-    }
-
-    .card-back-sub {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 7px;
-      letter-spacing: 0.35em;
-      text-indent: 0.35em;
-      color: rgba(0,255,180,0.28);
+    .flip-front {
+      position: relative;
+      width: 100%; height: 100%;
     }
 
     .flip-front {
-      transform: rotateY(180deg);
-      background: #0c0f0e;
-      border: 1px solid rgba(0,255,180,0.18);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       gap: 16px;
-      padding: 20px;
     }
 
     .qr-frame {
-      background: #fff;
-      padding: 10px;
-      border-radius: 10px;
+      background: transparent;
+      padding: 0;
+      border: none;
+      box-shadow: none;
       line-height: 0;
-      box-shadow: 0 0 0 1px rgba(0,255,180,0.15), 0 8px 24px rgba(0,0,0,0.5);
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .qr-frame img {
+    #cherryCanvas {
       width: 100%;
-      max-width: 210px;
+      height: 100%;
       display: block;
-      border-radius: 2px;
     }
 
     .qr-label {
@@ -601,18 +545,11 @@
   <div id="card-overlay">
     <div id="flip-card">
       <div class="flip-inner">
-        <div class="flip-back">
-          <div class="card-back-inner">
-            <span class="card-back-brand">ZGOODORDIE</span>
-            <div class="card-back-rule"></div>
-            <span class="card-back-sub">ROLL THE DICE</span>
-          </div>
-        </div>
         <div class="flip-front">
           <div class="qr-frame">
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=420x420&data=https%3A%2F%2Fdemo.golivestores.com%2Fzgoodordie%2F&margin=10&color=0a0a0a&bgcolor=ffffff" alt="QR Code" loading="lazy">
+            <canvas id="cherryCanvas"></canvas>
           </div>
-          <p class="qr-label">SCAN TO REVEAL YOUR FATE</p>
+          <p class="qr-label">TAP TO FLATTEN · SCAN YOUR FATE</p>
         </div>
       </div>
     </div>
@@ -621,6 +558,8 @@
 
   <!-- GSAP 3 -->
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <!-- QR module-matrix generator (used by Phase 4 cherry-blossom QR) -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
   <script type="importmap">
   {
@@ -1324,25 +1263,19 @@
       const overlay = document.getElementById('card-overlay');
       overlay.style.opacity = '1';
       overlay.classList.add('active');
-      requestAnimationFrame(() => {
-        setTimeout(() => overlay.classList.add('flipped'), 400);
-      });
     }, [], 5.7);
   }
 
   /* Close button */
   document.getElementById('card-close').addEventListener('click', () => {
     const overlay = document.getElementById('card-overlay');
-    overlay.classList.remove('flipped');
-    setTimeout(() => {
-      overlay.classList.remove('active');
-      gsap.to(overlay, { opacity: 0, duration: 0.4, onComplete: () => {
-        cardRainActive = false;
-        gsap.to('#ui3', { opacity: 1, y: 0, duration: 0.5 });
-        document.getElementById('ui3').style.pointerEvents = 'auto';
-        startCardFloat(); // resume float when icon bar returns
-      }});
-    }, 500);
+    overlay.classList.remove('active');
+    gsap.to(overlay, { opacity: 0, duration: 0.4, onComplete: () => {
+      cardRainActive = false;
+      gsap.to('#ui3', { opacity: 1, y: 0, duration: 0.5 });
+      document.getElementById('ui3').style.pointerEvents = 'auto';
+      startCardFloat();
+    }});
   });
 
   /* ── BACKGROUND SWITCHER — A+C: Glitch Cut + Signal Loss ── */
@@ -1395,6 +1328,328 @@
     btn.addEventListener('click',    handler);
     btn.addEventListener('touchend', handler, { passive: false });
   });
+
+  /* ════════════════════════════════════════════════════════
+     PHASE 4 — Cherry Blossom 3D QR (inside flip-card front)
+     Lazy-init on first overlay open. Separate WebGL context.
+  ════════════════════════════════════════════════════════ */
+  const CHERRY_URL = 'https://demo.golivestores.com/zgoodordie/';
+  const cherry = {
+    inited: false,
+    rafId: null,
+    renderer: null, scene: null, camera: null,
+    treeMesh: null, treeVox: [],
+    petals: null, petalState: [],
+    grownReady: false,
+    entryStart: 0,
+    flipAnim: null,
+    camState: null,
+    viewSize: 0,
+    N: 0,
+    dummy: null,
+    petalDummy: null,
+  };
+
+  function initCherry() {
+    if (cherry.inited) return;
+    cherry.inited = true;
+
+    const canvas = document.getElementById('cherryCanvas');
+    const qr = qrcode(0, 'M');
+    qr.addData(CHERRY_URL);
+    qr.make();
+    const N = qr.getModuleCount();
+    cherry.N = N;
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const size = canvas.clientWidth || 260;
+    renderer.setSize(size, size, false);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.05;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    cherry.renderer = renderer;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0612);
+    cherry.scene = scene;
+
+    const viewSize = N * 0.65;
+    cherry.viewSize = viewSize;
+    const cam = new THREE.OrthographicCamera(-viewSize, viewSize, viewSize, -viewSize, 0.1, 1000);
+    cherry.camera = cam;
+
+    cherry.camState = {
+      iso:  { theta: Math.PI / 4, phi: Math.PI / 3.2, dist: N * 2 },
+      flat: { theta: 0,            phi: 0.001,        dist: N * 2 },
+      t: 0, target: 0,
+    };
+
+    scene.add(new THREE.AmbientLight(0xffd5e0, 0.45));
+    const sun = new THREE.DirectionalLight(0xffeedd, 1.4);
+    sun.position.set(N * 0.6, N * 1.4, N * 0.4);
+    sun.castShadow = true;
+    sun.shadow.mapSize.set(1024, 1024);
+    const s = N * 1.2;
+    sun.shadow.camera.left = -s; sun.shadow.camera.right = s;
+    sun.shadow.camera.top = s; sun.shadow.camera.bottom = -s;
+    sun.shadow.camera.near = 0.1; sun.shadow.camera.far = N * 4;
+    sun.shadow.bias = -0.0008;
+    scene.add(sun);
+    const rim = new THREE.DirectionalLight(0xff8fb0, 0.25);
+    rim.position.set(-N, -N * 0.3, -N);
+    scene.add(rim);
+
+    const COL = {
+      dark:    new THREE.Color('#1a0a14'),
+      light:   new THREE.Color('#f5e6ea'),
+      trunk:   new THREE.Color('#3d2817'),
+      blossom: new THREE.Color('#ffb7c5'),
+      blossomDeep: new THREE.Color('#ff8fb0'),
+    };
+    const isDark = (r, c) => qr.isDark(r, c);
+    const halfN = (N - 1) / 2;
+    const voxels = [];
+
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        voxels.push({
+          x: c - halfN, z: r - halfN, y: 0,
+          color: isDark(r, c) ? COL.dark : COL.light,
+          isTree: false,
+        });
+      }
+    }
+
+    const rand = (seed) => {
+      let st = seed | 0;
+      return () => {
+        st = (st * 1664525 + 1013904223) | 0;
+        return ((st >>> 0) % 10000) / 10000;
+      };
+    };
+
+    for (let r = 0; r < N; r++) {
+      for (let c = 0; c < N; c++) {
+        if (!isDark(r, c)) continue;
+        const inFinder =
+          (r < 8 && c < 8) || (r < 8 && c >= N - 8) || (r >= N - 8 && c < 8);
+        if (inFinder) continue;
+        const rng = rand(r * 131 + c * 17);
+        if (rng() < 0.30) continue;
+        const trunkH = 1 + (rng() < 0.5 ? 0 : 1);
+        const baseX = c - halfN, baseZ = r - halfN;
+        for (let y = 1; y <= trunkH; y++) {
+          voxels.push({ x: baseX, y, z: baseZ, color: COL.trunk, isTree: true });
+        }
+        const topY = trunkH + 1;
+        const canopySize = rng() < 0.5 ? 0 : 1;
+        voxels.push({ x: baseX, y: topY, z: baseZ, color: COL.blossom, isTree: true });
+        if (canopySize === 1) {
+          voxels.push({ x: baseX, y: topY, z: baseZ, color: COL.blossomDeep, isTree: true });
+          voxels.push({ x: baseX, y: topY + 1, z: baseZ, color: COL.blossom, isTree: true });
+        }
+      }
+    }
+
+    const plateVox = voxels.filter(v => !v.isTree);
+    const treeVox  = voxels.filter(v =>  v.isTree);
+    cherry.treeVox = treeVox;
+
+    const VOXEL = 0.98;
+    const geo = new THREE.BoxGeometry(VOXEL, VOXEL, VOXEL);
+    const plateMat = new THREE.MeshBasicMaterial();
+    const plateMesh = new THREE.InstancedMesh(geo, plateMat, plateVox.length);
+    plateMesh.receiveShadow = true;
+    scene.add(plateMesh);
+
+    const treeMat = new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0.0 });
+    const treeMesh = new THREE.InstancedMesh(geo, treeMat, treeVox.length);
+    treeMesh.castShadow = true;
+    treeMesh.receiveShadow = true;
+    scene.add(treeMesh);
+    cherry.treeMesh = treeMesh;
+
+    const dummy = new THREE.Object3D();
+    cherry.dummy = dummy;
+    plateVox.forEach((v, i) => {
+      dummy.position.set(v.x, v.y, v.z);
+      dummy.scale.set(1, 1, 1);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      plateMesh.setMatrixAt(i, dummy.matrix);
+      plateMesh.setColorAt(i, v.color);
+    });
+    plateMesh.instanceMatrix.needsUpdate = true;
+    plateMesh.instanceColor.needsUpdate = true;
+
+    treeVox.forEach((v, i) => {
+      dummy.position.set(v.x, v.y, v.z);
+      dummy.scale.set(1, 0.001, 1);
+      dummy.rotation.set(0, 0, 0);
+      dummy.updateMatrix();
+      treeMesh.setMatrixAt(i, dummy.matrix);
+      treeMesh.setColorAt(i, v.color);
+    });
+    treeMesh.instanceMatrix.needsUpdate = true;
+    treeMesh.instanceColor.needsUpdate = true;
+
+    // Petals — fewer in card view
+    const PC = 40;
+    const petalGeo = new THREE.BoxGeometry(0.18, 0.18, 0.04);
+    const petalMat = new THREE.MeshStandardMaterial({
+      color: '#ffc4d4', roughness: 0.7, transparent: true, opacity: 0.9,
+    });
+    const petals = new THREE.InstancedMesh(petalGeo, petalMat, PC);
+    scene.add(petals);
+    cherry.petals = petals;
+    for (let i = 0; i < PC; i++) {
+      cherry.petalState.push({
+        x: (Math.random() - 0.5) * N * 1.4,
+        y: Math.random() * N * 1.2,
+        z: (Math.random() - 0.5) * N * 1.4,
+        vy: 0.02 + Math.random() * 0.03,
+        sway: Math.random() * Math.PI * 2,
+        swaySpeed: 0.5 + Math.random() * 1.2,
+        rot: Math.random() * Math.PI,
+        rotSpeed: (Math.random() - 0.5) * 0.04,
+      });
+    }
+    cherry.petalDummy = new THREE.Object3D();
+
+    // Interaction: tap canvas → flip iso/flat
+    const flipView = () => {
+      const from = cherry.camState.t;
+      const to = 1 - Math.round(cherry.camState.target);
+      cherry.camState.target = to;
+      const start = performance.now();
+      const DUR = 1100;
+      cherry.flipAnim = (now) => {
+        const t = Math.min(1, (now - start) / DUR);
+        cherry.camState.t = from + (to - from) * t;
+        if (t >= 1) cherry.flipAnim = null;
+      };
+    };
+    canvas.addEventListener('click', (e) => { e.stopPropagation(); flipView(); });
+    canvas.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); flipView(); }, { passive: false });
+
+    // Resize observer
+    const ro = new ResizeObserver(() => {
+      const w = canvas.clientWidth || 260;
+      renderer.setSize(w, w, false);
+    });
+    ro.observe(canvas);
+  }
+
+  function applyCherryCam() {
+    const c = cherry.camState, a = c.iso, b = c.flat;
+    const t = c.t;
+    const e = t < .5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+    const theta = a.theta * (1-e) + b.theta * e;
+    const phi   = a.phi   * (1-e) + b.phi   * e;
+    const dist  = a.dist;
+    const s = Math.sin(phi), co = Math.cos(phi);
+    cherry.camera.position.set(dist * s * Math.cos(theta), dist * co, dist * s * Math.sin(theta));
+    cherry.camera.lookAt(0, 0, 0);
+  }
+
+  function cherryUpdateEntry(now) {
+    const elapsed = now - cherry.entryStart;
+    const done = elapsed > 1400 + 800;
+    const d = cherry.dummy;
+    cherry.treeVox.forEach((v, i) => {
+      const dist = Math.hypot(v.x, v.z);
+      const delay = dist * 22;
+      const tt = Math.max(0, Math.min(1, (elapsed - delay) / 600));
+      const ev = 1 - Math.pow(1 - tt, 3);
+      d.position.set(v.x, v.y - (1 - ev) * 0.5, v.z);
+      d.scale.set(1, Math.max(0.001, ev), 1);
+      d.rotation.set(0, 0, 0);
+      d.updateMatrix();
+      cherry.treeMesh.setMatrixAt(i, d.matrix);
+    });
+    cherry.treeMesh.instanceMatrix.needsUpdate = true;
+    if (done) cherry.grownReady = true;
+    return !done;
+  }
+
+  function cherryApplyFlipCollapse() {
+    if (!cherry.grownReady) return;
+    const k = 1 - cherry.camState.t;
+    const sc = Math.max(0.0001, k);
+    const d = cherry.dummy;
+    cherry.treeVox.forEach((v, i) => {
+      d.position.set(v.x, v.y * k, v.z);
+      d.scale.set(sc, sc, sc);
+      d.rotation.set(0, 0, 0);
+      d.updateMatrix();
+      cherry.treeMesh.setMatrixAt(i, d.matrix);
+    });
+    cherry.treeMesh.instanceMatrix.needsUpdate = true;
+  }
+
+  let cherryEntryActive = true;
+  function cherryTick(now) {
+    if (cherryEntryActive) cherryEntryActive = cherryUpdateEntry(now);
+    if (cherry.flipAnim) { cherry.flipAnim(now); cherryApplyFlipCollapse(); }
+    applyCherryCam();
+
+    const N = cherry.N;
+    for (let i = 0; i < cherry.petalState.length; i++) {
+      const p = cherry.petalState[i];
+      p.y -= p.vy;
+      p.sway += 0.016 * p.swaySpeed;
+      p.rot += p.rotSpeed;
+      const x = p.x + Math.sin(p.sway) * 0.4;
+      const z = p.z + Math.cos(p.sway * 0.7) * 0.3;
+      if (p.y < -1) {
+        p.y = N * 1.2;
+        p.x = (Math.random() - 0.5) * N * 1.4;
+        p.z = (Math.random() - 0.5) * N * 1.4;
+      }
+      cherry.petalDummy.position.set(x, p.y, z);
+      cherry.petalDummy.rotation.set(p.rot, p.rot * 0.7, 0);
+      cherry.petalDummy.updateMatrix();
+      cherry.petals.setMatrixAt(i, cherry.petalDummy.matrix);
+    }
+    cherry.petals.instanceMatrix.needsUpdate = true;
+    cherry.petals.visible = cherry.camState.t < 0.6;
+
+    cherry.renderer.render(cherry.scene, cherry.camera);
+    cherry.rafId = requestAnimationFrame(cherryTick);
+  }
+
+  function startCherry() {
+    initCherry();
+    if (cherry.rafId != null) return; // already running
+    // Reset to iso view on re-open
+    cherry.camState.t = 0;
+    cherry.camState.target = 0;
+    if (!cherry.grownReady) {
+      cherry.entryStart = performance.now();
+      cherryEntryActive = true;
+    }
+    applyCherryCam();
+    cherry.rafId = requestAnimationFrame(cherryTick);
+  }
+
+  function stopCherry() {
+    if (cherry.rafId != null) {
+      cancelAnimationFrame(cherry.rafId);
+      cherry.rafId = null;
+    }
+  }
+
+  /* Hook into overlay lifecycle */
+  const overlayEl = document.getElementById('card-overlay');
+  // Start when overlay becomes active (after card-rain at 5.7s)
+  const overlayObserver = new MutationObserver(() => {
+    if (overlayEl.classList.contains('active')) startCherry();
+    else stopCherry();
+  });
+  overlayObserver.observe(overlayEl, { attributes: true, attributeFilter: ['class'] });
 
   </script>
 </body>
